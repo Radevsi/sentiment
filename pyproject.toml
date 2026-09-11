@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "french-finance-sentiment"
+version = "0.1.0"
+description = "French-only reproduction of Jha, Liu, and Manela's finance-sentiment pipeline"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.26,<3",
+  "torch>=2.2",
+  "transformers>=4.40,<5",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+download = ["google-ngram-downloader"]
+
+[project.scripts]
+finance-extract = "finance_sentiment.extract:main"
+finance-score = "finance_sentiment.score:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

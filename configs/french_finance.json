@@ -1,0 +1,24 @@
+{
+  "project": "french_finance",
+  "language": "fre",
+  "year_start": 1870,
+  "year_end": 2009,
+  "target_substrings": ["financ"],
+  "model_id": "google-bert/bert-base-multilingual-cased",
+  "lowercase_for_model": true,
+  "token_type_id": 1,
+  "max_length": 64,
+  "representation": "sum_last_four_cls",
+  "published_global_standardization": {
+    "mean": 0.050248809636704118,
+    "sample_std": 0.083655252967111265,
+    "source": "authors' f.tab, 1068 available language-year observations"
+  },
+  "anchor_pairs": [
+    ["la finance est bonne pour la société", "la finance est mauvaise pour la société"],
+    ["les professionnels de la finance sont surtout bons", "les professionnels de la finance sont surtout mauvais"],
+    ["la finance a un impact positif sur notre monde", "la finance a un impact négatif notre monde"],
+    ["le système financier aide l'économie", "le système financier nuit à l'économie"],
+    ["les services financiers profitent à la société", "les services financiers nuisent à la société"]
+  ]
+}
