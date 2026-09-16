@@ -1,0 +1,253 @@
+{
+  "language": "fre",
+  "release": "20120701",
+  "ngram_length": 5,
+  "selection": "paper-parts",
+  "shards": [
+    {
+      "name": "googlebooks-fre-all-5gram-20120701-_ADJ_.gz",
+      "url": "https://storage.googleapis.com/books/ngrams/books/googlebooks-fre-all-5gram-20120701-_ADJ_.gz?generation=1347374679253002",
+      "size": 16196559,
+      "md5": "r1YbYH7kFq/7i8oOvWgfXw==",
+      "generation": "1347374679253002"
+    },
+    {
+      "name": "googlebooks-fre-all-5gram-20120701-_ADP_.gz",
+      "url": "https://storage.googleapis.com/books/ngrams/books/googlebooks-fre-all-5gram-20120701-_ADP_.gz?generation=1347374678497002",
+      "size": 16314529,
+      "md5": "LUcy8IrIA0QCPThUBT/Skw==",
+      "generation": "1347374678497002"
+    },
+    {
+      "name": "googlebooks-fre-all-5gram-20120701-_ADV_.gz",
+      "url": "https://storage.googleapis.com/books/ngrams/books/googlebooks-fre-all-5gram-20120701-_ADV_.gz?generation=1347374681417002",
+      "size": 15965593,
+      "md5": "rguo3pO/FhL3vdVm7JVHWA==",
+      "generation": "1347374681417002"
+    },
+    {
+      "name": "googlebooks-fre-all-5gram-20120701-_CONJ_.gz",
+      "url": "https://storage.googleapis.com/books/ngrams/books/googlebooks-fre-all-5gram-20120701-_CONJ_.gz?generation=1347374684060002",
+      "size": 14423475,
+      "md5": "cDZxRtrGPnBKhH9m0VfVCA==",
+      "generation": "1347374684060002"
+    },
+    {
+      "name": "googlebooks-fre-all-5gram-20120701-_DET_.gz",
+      "url": "https://storage.googleapis.com/books/ngrams/books/googlebooks-fre-all-5gram-20120701-_DET_.gz?generation=1347374686445002",
+      "size": 14807782,
+      "md5": "7dtOth0Ww/FmA6YVC/W4rA==",
+      "generation": "1347374686445002"
+    },
+    {
+      "name": "googlebooks-fre-all-5gram-20120701-_NOUN_.gz",
+      "url": "https://storage.googleapis.com/books/ngrams/books/googlebooks-fre-all-5gram-20120701-_NOUN_.gz?generation=1347374688163002",
+      "size": 22040823,
+      "md5": "NEb35/g2DEh8qd+tBfzedg==",
+      "generation": "1347374688163002"
+    },
+    {
+      "name": "googlebooks-fre-all-5gram-20120701-_PRON_.gz",
+      "url": "https://storage.googleapis.com/books/ngrams/books/googlebooks-fre-all-5gram-20120701-_PRON_.gz?generation=1347374688181002",
+      "size": 14921019,
+      "md5": "Q9AsZGNLKkbdtnVxXafiQw==",
+      "generation": "1347374688181002"
+    },
+    {
+      "name": "googlebooks-fre-all-5gram-20120701-_PRT_.gz",
+      "url": "https://storage.googleapis.com/books/ngrams/books/googlebooks-fre-all-5gram-20120701-_PRT_.gz?generation=1347374687834002",
+      "size": 5839470,
+      "md5": "cv/50qniSb6xz0VKQb+UcA==",
+      "generation": "1347374687834002"
+    },
+    {
+      "name": "googlebooks-fre-all-5gram-20120701-_VERB_.gz",
+      "url": "https://storage.googleapis.com/books/ngrams/books/googlebooks-fre-all-5gram-20120701-_VERB_.gz?generation=1347374691813002",
+      "size": 19166728,
+      "md5": "MT5s0/x+0rFUpva7COlgzw==",
+      "generation": "1347374691813002"
+    },
+    {
+      "name": "googlebooks-fre-all-5gram-20120701-a_.gz",
+      "url": "https://storage.googleapis.com/books/ngrams/books/googlebooks-fre-all-5gram-20120701-a_.gz?generation=1347374852538002",
+      "size": 792907329,
+      "md5": "8AVGNpeFBFvWnNHjX6I8SA==",
+      "generation": "1347374852538002"
+    },
+    {
+      "name": "googlebooks-fre-all-5gram-20120701-b_.gz",
+      "url": "https://storage.googleapis.com/books/ngrams/books/googlebooks-fre-all-5gram-20120701-b_.gz?generation=1347374864085002",
+      "size": 2028141,
+      "md5": "cOL8AsHu9qlgfhS7CNVWUw==",
+      "generation": "1347374864085002"
+    },
+    {
+      "name": "googlebooks-fre-all-5gram-20120701-c_.gz",
+      "url": "https://storage.googleapis.com/books/ngrams/books/googlebooks-fre-all-5gram-20120701-c_.gz?generation=1347374908769002",
+      "size": 10467046,
+      "md5": "o0l3h6+tnTf01sVksALBvw==",
+      "generation": "1347374908769002"
+    },
+    {
+      "name": "googlebooks-fre-all-5gram-20120701-d_.gz",
+      "url": "https://storage.googleapis.com/books/ngrams/books/googlebooks-fre-all-5gram-20120701-d_.gz?generation=1347375132554002",
+      "size": 472550622,
+      "md5": "K4K6S9GlFrc5eoPnmNfZTg==",
+      "generation": "1347375132554002"
+    },
+    {
+      "name": "googlebooks-fre-all-5gram-20120701-e_.gz",
+      "url": "https://storage.googleapis.com/books/ngrams/books/googlebooks-fre-all-5gram-20120701-e_.gz?generation=1347375259120002",
+      "size": 1176894,
+      "md5": "F74eofzNFoaQMD9l2a9WZg==",
+      "generation": "1347375259120002"
+    },
+    {
+      "name": "googlebooks-fre-all-5gram-20120701-f_.gz",
+      "url": "https://storage.googleapis.com/books/ngrams/books/googlebooks-fre-all-5gram-20120701-f_.gz?generation=1347375529296002",
+      "size": 1371131,
+      "md5": "L/7FbrRTv0L6sAbKASDS6w==",
+      "generation": "1347375529296002"
+    },
+    {
+      "name": "googlebooks-fre-all-5gram-20120701-g_.gz",
+      "url": "https://storage.googleapis.com/books/ngrams/books/googlebooks-fre-all-5gram-20120701-g_.gz?generation=1347375639013002",
+      "size": 1023319,
+      "md5": "JhQrRyhuKC6EvRoo82ar3w==",
+      "generation": "1347375639013002"
+    },
+    {
+      "name": "googlebooks-fre-all-5gram-20120701-h_.gz",
+      "url": "https://storage.googleapis.com/books/ngrams/books/googlebooks-fre-all-5gram-20120701-h_.gz?generation=1347375674751002",
+      "size": 1650059,
+      "md5": "UP0bzS8PsdhvbHRKsNH+9Q==",
+      "generation": "1347375674751002"
+    },
+    {
+      "name": "googlebooks-fre-all-5gram-20120701-i_.gz",
+      "url": "https://storage.googleapis.com/books/ngrams/books/googlebooks-fre-all-5gram-20120701-i_.gz?generation=1347375706300002",
+      "size": 8129208,
+      "md5": "iD0mTx6nPm1m8CjxTjEIyg==",
+      "generation": "1347375706300002"
+    },
+    {
+      "name": "googlebooks-fre-all-5gram-20120701-j_.gz",
+      "url": "https://storage.googleapis.com/books/ngrams/books/googlebooks-fre-all-5gram-20120701-j_.gz?generation=1347375748036002",
+      "size": 1609315,
+      "md5": "U5NFqoyaSAo5d7aLAbFiNQ==",
+      "generation": "1347375748036002"
+    },
+    {
+      "name": "googlebooks-fre-all-5gram-20120701-k_.gz",
+      "url": "https://storage.googleapis.com/books/ngrams/books/googlebooks-fre-all-5gram-20120701-k_.gz?generation=1347375803022002",
+      "size": 272776,
+      "md5": "kopg9VyAOJkUQJ7lpLZUTA==",
+      "generation": "1347375803022002"
+    },
+    {
+      "name": "googlebooks-fre-all-5gram-20120701-l_.gz",
+      "url": "https://storage.googleapis.com/books/ngrams/books/googlebooks-fre-all-5gram-20120701-l_.gz?generation=1347375961601002",
+      "size": 735775992,
+      "md5": "UtsnsFpaw9SirM0eCJw+FQ==",
+      "generation": "1347375961601002"
+    },
+    {
+      "name": "googlebooks-fre-all-5gram-20120701-m_.gz",
+      "url": "https://storage.googleapis.com/books/ngrams/books/googlebooks-fre-all-5gram-20120701-m_.gz?generation=1347376062900002",
+      "size": 17531518,
+      "md5": "o7AIoEH2Af4iQ8Wcq6gqLw==",
+      "generation": "1347376062900002"
+    },
+    {
+      "name": "googlebooks-fre-all-5gram-20120701-n_.gz",
+      "url": "https://storage.googleapis.com/books/ngrams/books/googlebooks-fre-all-5gram-20120701-n_.gz?generation=1347376211706002",
+      "size": 10119847,
+      "md5": "zfad5CD9O0/a+J4N8OBlUA==",
+      "generation": "1347376211706002"
+    },
+    {
+      "name": "googlebooks-fre-all-5gram-20120701-o_.gz",
+      "url": "https://storage.googleapis.com/books/ngrams/books/googlebooks-fre-all-5gram-20120701-o_.gz?generation=1347376255026002",
+      "size": 831029,
+      "md5": "i2m7lWfHn1qT7kfxZzCpdw==",
+      "generation": "1347376255026002"
+    },
+    {
+      "name": "googlebooks-fre-all-5gram-20120701-p_.gz",
+      "url": "https://storage.googleapis.com/books/ngrams/books/googlebooks-fre-all-5gram-20120701-p_.gz?generation=1347376339083002",
+      "size": 11446872,
+      "md5": "SSViMwiI6Zx7LaMN6lO2kg==",
+      "generation": "1347376339083002"
+    },
+    {
+      "name": "googlebooks-fre-all-5gram-20120701-q_.gz",
+      "url": "https://storage.googleapis.com/books/ngrams/books/googlebooks-fre-all-5gram-20120701-q_.gz?generation=1347376461296002",
+      "size": 127932,
+      "md5": "E1EVjxoiuUH34bNIw1Uqow==",
+      "generation": "1347376461296002"
+    },
+    {
+      "name": "googlebooks-fre-all-5gram-20120701-r_.gz",
+      "url": "https://storage.googleapis.com/books/ngrams/books/googlebooks-fre-all-5gram-20120701-r_.gz?generation=1347376505782002",
+      "size": 1191293,
+      "md5": "9QK5CXic+a9xnTjQ5bmBQg==",
+      "generation": "1347376505782002"
+    },
+    {
+      "name": "googlebooks-fre-all-5gram-20120701-s_.gz",
+      "url": "https://storage.googleapis.com/books/ngrams/books/googlebooks-fre-all-5gram-20120701-s_.gz?generation=1347376577613002",
+      "size": 4432488,
+      "md5": "5eX5eWmMJy4h+9AKo9EddQ==",
+      "generation": "1347376577613002"
+    },
+    {
+      "name": "googlebooks-fre-all-5gram-20120701-t_.gz",
+      "url": "https://storage.googleapis.com/books/ngrams/books/googlebooks-fre-all-5gram-20120701-t_.gz?generation=1347376755008002",
+      "size": 16329059,
+      "md5": "Ktc3CTrMdl8z+w2k4RaItQ==",
+      "generation": "1347376755008002"
+    },
+    {
+      "name": "googlebooks-fre-all-5gram-20120701-u_.gz",
+      "url": "https://storage.googleapis.com/books/ngrams/books/googlebooks-fre-all-5gram-20120701-u_.gz?generation=1347376819652002",
+      "size": 335779,
+      "md5": "c4Trn+qs4P60GjiU1SY1EQ==",
+      "generation": "1347376819652002"
+    },
+    {
+      "name": "googlebooks-fre-all-5gram-20120701-v_.gz",
+      "url": "https://storage.googleapis.com/books/ngrams/books/googlebooks-fre-all-5gram-20120701-v_.gz?generation=1347376854624002",
+      "size": 4585724,
+      "md5": "LhL0ORcdYwYkj+3mkwZc3g==",
+      "generation": "1347376854624002"
+    },
+    {
+      "name": "googlebooks-fre-all-5gram-20120701-w_.gz",
+      "url": "https://storage.googleapis.com/books/ngrams/books/googlebooks-fre-all-5gram-20120701-w_.gz?generation=1347376903748002",
+      "size": 173085,
+      "md5": "eRug6CrwHtEKYSAhxmD7lw==",
+      "generation": "1347376903748002"
+    },
+    {
+      "name": "googlebooks-fre-all-5gram-20120701-x_.gz",
+      "url": "https://storage.googleapis.com/books/ngrams/books/googlebooks-fre-all-5gram-20120701-x_.gz?generation=1347376914039002",
+      "size": 4312221,
+      "md5": "pV5ltnU1BveKOvZmSkO5xg==",
+      "generation": "1347376914039002"
+    },
+    {
+      "name": "googlebooks-fre-all-5gram-20120701-y_.gz",
+      "url": "https://storage.googleapis.com/books/ngrams/books/googlebooks-fre-all-5gram-20120701-y_.gz?generation=1347376929755002",
+      "size": 46631669,
+      "md5": "I0EOH/xvO+3Aenn7GoBwPA==",
+      "generation": "1347376929755002"
+    },
+    {
+      "name": "googlebooks-fre-all-5gram-20120701-z_.gz",
+      "url": "https://storage.googleapis.com/books/ngrams/books/googlebooks-fre-all-5gram-20120701-z_.gz?generation=1347376931369002",
+      "size": 59286,
+      "md5": "uwOcshjFa9YUoDVF2I666Q==",
+      "generation": "1347376931369002"
+    }
+  ]
+}

@@ -19,11 +19,14 @@ def load_config(path: str | Path) -> dict[str, Any]:
         "year_end",
         "target_substrings",
         "model_id",
-        "anchor_pairs",
     }
     missing = sorted(required - config.keys())
     if missing:
         raise ValueError(f"Missing config keys: {', '.join(missing)}")
+    if not config["target_substrings"] or any(not str(t).strip() for t in config["target_substrings"]):
+        raise ValueError("target_substrings must contain nonempty strings")
+    if int(config["year_start"]) > int(config["year_end"]):
+        raise ValueError("year_start must not exceed year_end")
     return config
 
 

@@ -5,4 +5,12 @@ __pycache__/
 data/raw/
 data/work/
 output/
-
+runs/
+logs/
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+*.npy
+*.partial
+.cache/

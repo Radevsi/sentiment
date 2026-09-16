@@ -53,8 +53,11 @@ class PaperBertEncoder:
         self.torch = torch
         self.config = config
         self.device = torch.device(device)
-        self.tokenizer = AutoTokenizer.from_pretrained(config["model_id"])
-        self.model = AutoModel.from_pretrained(config["model_id"])
+        options = {"revision": config.get("model_revision", "main")}
+        if config.get("local_files_only"):
+            options["local_files_only"] = True
+        self.tokenizer = AutoTokenizer.from_pretrained(config["model_id"], **options)
+        self.model = AutoModel.from_pretrained(config["model_id"], **options)
         self.model.to(self.device)
         self.model.eval()
 
@@ -78,7 +81,7 @@ class PaperBertEncoder:
         encoded = {key: value.to(self.device) for key, value in encoded.items()}
         with torch.inference_mode():
             output = self.model(**encoded, output_hidden_states=True, return_dict=True)
-            cls = torch.stack(output.hidden_states[-4:], dim=0).sum(dim=0)[:, 0, :]
+            cls = torch.stack([layer[:, 0, :] for layer in output.hidden_states[-4:]], dim=0).sum(dim=0)
         return cls.float().cpu().numpy()
 
 

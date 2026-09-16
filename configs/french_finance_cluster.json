@@ -1,0 +1,15 @@
+{
+  "project": "french_finance_context_embeddings",
+  "language": "fre",
+  "year_start": 1870,
+  "year_end": 2009,
+  "target_substrings": [
+    "financ"
+  ],
+  "model_id": "google-bert/bert-base-multilingual-cased",
+  "lowercase_for_model": true,
+  "token_type_id": 1,
+  "max_length": 64,
+  "representation": "sum_last_four_cls",
+  "model_revision": "3f076fdb1ab68d5b2880cb87a0886f315b8146f8"
+}

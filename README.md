@@ -1,4 +1,39 @@
-# French finance sentiment: minimal faithful reproduction
+# French finance contexts, embeddings, and sentiment
+
+## New: cluster retrieval and reusable vectors
+
+For the current download-and-embedding workflow, start with
+**[the cluster walkthrough](docs/cluster.md)**. It includes SSH/tmux and Slurm
+instructions, storage/quota discovery, source sizes, resumable streaming,
+portable BERT vectors, CPU nearest-neighbor queries, and visualizer export.
+
+First run on the remote cluster, from this checkout:
+
+```bash
+python3 scripts/cluster/inspect.py
+```
+
+This only inspects the machine. Share its output before choosing storage and
+job settings. There is no local corpus/model download needed to prepare code.
+
+The checked-in Google metadata inventories **678 French 2012 five-gram files
+(55.35 GB compressed)**. The new default scans them all but stores only records
+containing `financ` from 1870–2009. The existing reproduction selection is
+**35 files (2.29 GB)**, selectable separately. No finance-only context count is
+known until retrieval. The full-shard sample is a methodological extension.
+
+The new entry points are `finance-pipeline` and `finance-query`;
+`configs/french_finance_cluster.json` pins model/preprocessing without needing
+sentiment anchors. For another language or target, copy the config, create the
+corresponding manifest, and use a separate run directory. Retrieval installs
+without PyTorch; embedding/query/scoring require the `ml` extra.
+
+## Original annual-sentiment workflow
+
+The remainder documents the older full-raw-download/scalar-scoring workflow.
+Use the cluster workflow above for safe interrupted retrieval and saved vectors.
+The legacy extraction command is additive: do not rerun it against a populated
+database, and do not mix it with the new tracked run directories.
 
 This repository reproduces the French portion of Jha, Liu, and Manela,
 *Does Finance Benefit Society? A Language Embedding Approach*. It does **not**
@@ -40,7 +75,7 @@ machine, then install the project:
 python -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
-pip install -e '.[dev,download]'
+pip install -e '.[dev,download,ml]'
 ```
 
 Place the **2012** French 5-gram `.gz` shards under `data/raw/fre/`. To use the

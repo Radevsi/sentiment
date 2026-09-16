@@ -9,17 +9,18 @@ description = "French-only reproduction of Jha, Liu, and Manela's finance-sentim
 requires-python = ">=3.10"
 dependencies = [
   "numpy>=1.26,<3",
-  "torch>=2.2",
-  "transformers>=4.40,<5",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
 download = ["google-ngram-downloader"]
+ml = ["torch>=2.2", "transformers>=4.40,<5"]
 
 [project.scripts]
 finance-extract = "finance_sentiment.extract:main"
 finance-score = "finance_sentiment.score:main"
+finance-pipeline = "finance_sentiment.pipeline:main"
+finance-query = "finance_sentiment.search:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
