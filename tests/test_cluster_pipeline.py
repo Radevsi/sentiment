@@ -11,7 +11,7 @@ import numpy as np
 import pytest
 
 from finance_sentiment.corpus import retrieve, import_shard, shard_paths, SCHEMA, EXTRA_SCHEMA
-from finance_sentiment.embeddings import embed, open_vectors
+from finance_sentiment.embeddings import embed, open_vectors, record_batch, completed_embeddings, fsync_file
 from finance_sentiment.search import nearest, export_projector
 from finance_sentiment.tracking import run_lock
 
@@ -251,3 +251,131 @@ def test_interrupt_import_terminates_workers(corpus, monkeypatch):
         retrieve(root, config, manifest, workers=2)
     import multiprocessing
     assert not multiprocessing.active_children()
+
+
+class RecordingEncoder(FakeEncoder):
+    def __init__(self, config, device):
+        self.path = Path(config["test_record_dir"]) / (device.replace(":", "_") + ".jsonl")
+        self.path.parent.mkdir(exist_ok=True)
+
+    def encode(self, texts):
+        with self.path.open("a") as handle:
+            handle.write(json.dumps(texts) + "\n")
+        return super().encode(texts)
+
+
+class FourDeviceEncoder(RecordingEncoder):
+    def __init__(self, config, device):
+        super().__init__(config, device)
+        import time
+        self.path.with_suffix(".ready").touch()
+        deadline = time.monotonic() + 15
+        while len(list(self.path.parent.glob("*.ready"))) < 4:
+            if time.monotonic() > deadline:
+                raise RuntimeError("Four devices were not started concurrently")
+            time.sleep(.01)
+
+    def encode(self, texts):
+        import time
+        time.sleep(.03)
+        return super().encode(texts)
+
+
+def test_four_embedding_workers_cover_each_row_once(corpus, tmp_path):
+    root, config, manifest = corpus
+    config["test_record_dir"] = str(tmp_path / "worker-records")
+    retrieve(root, config, manifest)
+    with sqlite3.connect(root / "counts.sqlite") as conn:
+        conn.executemany("INSERT INTO contexts VALUES ('fre',1900,?,1)",
+                         [(f"finance synthetic context {i:03}",) for i in range(24)])
+    embed(root, devices=[f"cuda:{i}" for i in range(4)], batch_size=2, encoder_factory=FourDeviceEncoder)
+    matrix, conn, metadata = open_vectors(root)
+    rows = conn.execute("SELECT text FROM vector_rows ORDER BY row_id").fetchall()
+    expected = FakeEncoder({}, "cpu").encode([r[0] for r in rows])
+    np.testing.assert_array_equal(matrix, expected)
+    assert metadata["rows"] == 27
+    assert completed_embeddings(conn) == 27
+    assert conn.execute("SELECT COUNT(*) FROM embedding_batches").fetchone()[0] == 0
+    conn.close()
+    logs = list((tmp_path / "worker-records").glob("*.jsonl"))
+    assert len(logs) == 4
+    encoded = [text for path in logs for line in path.read_text().splitlines() for text in json.loads(line)]
+    assert sorted(encoded) == sorted(r[0] for r in rows)  # No omissions or duplication.
+
+
+def test_parallel_resume_preserves_serial_and_out_of_order_checkpoints(corpus, tmp_path):
+    root, config, manifest = corpus
+    config["test_record_dir"] = str(tmp_path / "worker-records")
+    retrieve(root, config, manifest)
+    with pytest.raises(RuntimeError, match="interruption"):
+        embed(root, batch_size=1, encoder_factory=InterruptEncoder)
+    with sqlite3.connect(root / "counts.sqlite") as conn:
+        texts = [r[0] for r in conn.execute("SELECT text FROM vector_rows ORDER BY row_id")]
+        matrix = np.load(root / "embeddings.npy", mmap_mode="r+")
+        matrix[2:3] = FakeEncoder({}, "cpu").encode(texts[2:3])
+        matrix.flush()
+        fsync_file(root / "embeddings.npy")
+        record_batch(conn, 2, 3)  # Simulate a later GPU batch reaching disk before the missing row 1.
+        assert completed_embeddings(conn) == 2
+        assert conn.execute("SELECT next_row FROM embedding_progress").fetchone()[0] == 1
+    with pytest.raises(ValueError, match="incomplete"):
+        open_vectors(root)
+    embed(root, devices=[f"cuda:{i}" for i in range(4)], batch_size=8, encoder_factory=RecordingEncoder)
+    encoded = [text for path in (tmp_path / "worker-records").glob("*.jsonl")
+               for line in path.read_text().splitlines() for text in json.loads(line)]
+    assert encoded == [texts[1]]
+    matrix, conn, _ = open_vectors(root)
+    np.testing.assert_array_equal(matrix, FakeEncoder({}, "cpu").encode(texts))
+    conn.close()
+
+
+class FailedEncoder(FakeEncoder):
+    def __init__(self, config, device):
+        raise RuntimeError("simulated GPU setup failure")
+
+
+class CrashedEncoder(FakeEncoder):
+    def __init__(self, config, device):
+        import os
+        os._exit(7)
+
+
+@pytest.mark.parametrize("factory,match", [(FailedEncoder, "GPU setup failure"), (CrashedEncoder, "worker exited")])
+def test_embedding_worker_failure_terminates_children_and_can_resume(corpus, factory, match):
+    root, config, manifest = corpus
+    retrieve(root, config, manifest)
+    with pytest.raises(RuntimeError, match=match):
+        embed(root, devices=["cuda:0", "cuda:1"], encoder_factory=factory)
+    import multiprocessing
+    assert not multiprocessing.active_children()
+    with pytest.raises(ValueError, match="incomplete"):
+        open_vectors(root)
+    embed(root, batch_size=2, encoder_factory=FakeEncoder)
+    _, conn, _ = open_vectors(root)
+    conn.close()
+
+
+def test_duplicate_embedding_devices_rejected(corpus):
+    root, config, manifest = corpus
+    with pytest.raises(ValueError, match="distinct"):
+        embed(root, devices=["cuda:0", "cuda:0"], encoder_factory=FakeEncoder)
+
+
+def test_vector_write_interruption_does_not_advance_receipt(corpus, monkeypatch):
+    root, config, manifest = corpus
+    retrieve(root, config, manifest)
+    def interrupt(*args):
+        raise KeyboardInterrupt
+    import finance_sentiment.embeddings as module
+    actual_record = module.record_batch
+    monkeypatch.setattr(module, "record_batch", interrupt)
+    with pytest.raises(KeyboardInterrupt):
+        embed(root, devices=["cuda:0", "cuda:1"], batch_size=1, encoder_factory=FakeEncoder)
+    import multiprocessing
+    assert not multiprocessing.active_children()
+    with sqlite3.connect(root / "counts.sqlite") as conn:
+        assert completed_embeddings(conn) == 0
+    monkeypatch.setattr(module, "record_batch", actual_record)
+    embed(root, encoder_factory=FakeEncoder)
+    _, conn, _ = open_vectors(root)
+    conn.close()

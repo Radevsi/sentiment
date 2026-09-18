@@ -30,6 +30,10 @@ without PyTorch; embedding/query/scoring require the `ml` extra.
 Pass `--workers 4` to `finance-pipeline fetch` to scan independent shards on
 four CPU processes with one database writer. Existing serial runs resume in
 the same directory; stop the old process before restarting with more workers.
+For four-GPU embedding use `finance-pipeline embed --devices cuda:0 cuda:1 cuda:2 cuda:3`
+with the same `--run-dir`; `--batch-size` is per GPU. The coordinator saves one
+aligned vector file and checkpoints completed batches, including out-of-order
+results. The [cluster walkthrough](docs/cluster.md) covers GPU selection and resume.
 
 ## Original annual-sentiment workflow
 

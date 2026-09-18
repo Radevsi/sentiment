@@ -250,6 +250,57 @@ across hardware. Record the environment alongside results. The pinned model is
 `google-bert/bert-base-multilingual-cased` at commit
 `3f076fdb1ab68d5b2880cb87a0886f315b8146f8`.
 
+### Four GPUs for embedding
+
+The embedding command supports one persistent model process per selected GPU.
+After installing the ML dependencies and running `prepare-model`, use this in
+tmux on the shared server. Here physical GPUs 0–3 are the four being used; change
+the mask to the GPUs assigned to you. Under Slurm, keep its provided GPU mask.
+
+```bash
+export HF_HOME="$HOME/projects/sentiment_data/cache/huggingface"
+export CUDA_VISIBLE_DEVICES=0,1,2,3
+export OMP_NUM_THREADS=2
+
+finance-pipeline embed \
+  --run-dir "$FINANCE_RUN" \
+  --devices cuda:0 cuda:1 cuda:2 cuda:3 \
+  --batch-size 256 --dtype float32 --offline
+```
+
+The indices after `--devices` refer to the **visible** GPUs. For example, with
+`CUDA_VISIBLE_DEVICES=2,3,6,7`, `cuda:0` refers to physical GPU 2. A previous
+`CUDA_VISIBLE_DEVICES=0` setting must be changed to expose all four. Requesting
+an unavailable or duplicate device fails clearly. Choose `--devices` or
+`--device`, not both; `--workers` belongs to the CPU retrieval stage.
+
+Batch size is **per GPU**: 256 allows up to 1,024 contexts across four in-flight
+batches. Reduce it to 128 or 64 on an out-of-memory failure. Each process loads
+the same cached model onto its GPU, receives different text batches, and sends
+vectors to the coordinator. The coordinator alone reads the database and writes
+the final `embeddings.npy` and batch receipts. No manual vector-file merge is
+needed. Workers use the `spawn` start method as required for safe CUDA process
+startup; see [PyTorch multiprocessing guidance](https://docs.pytorch.org/docs/stable/notes/multiprocessing.html).
+
+Stop any existing embedding process before changing the command. The updated
+code resumes the same directory from either a serial or a parallel run. Every
+batch is flushed to disk before its completion receipt commits, including
+batches that finish out of order. Restarting with different devices or batch
+sizes processes only the remaining gaps. An interrupted, uncommitted batch may
+be recomputed. `status` counts all saved batches; queries remain blocked until
+the complete vector file is ready. Keep library versions/model/dtype unchanged
+between attempts. `embedding_execution.json` records the latest device list,
+batch size and resume count.
+
+Progress reports aggregate saved contexts/sec, ETA, and saved row counts by
+device. The initial corpus verification and row-map preparation can take a
+minute or longer on NFS before model loading starts. Four GPUs may improve the
+inference phase, but startup, tokenization, interprocess transfer, and shared
+storage writes limit scaling. No fourfold speedup or fixed runtime is promised.
+Local tests exercise four concurrent fake encoders, row alignment, out-of-order
+resume, interruption, and worker failure. Real four-GPU BERT execution still
+requires validation on the server.
+
 **Slurm:** submit the provided scripts with the approved account, queue,
 wall-time, memory and GPU options. Values below are placeholders; resource sizes
 are starting requests, not measured requirements:
@@ -269,6 +320,11 @@ module loads in the job, or disallow outbound HTTPS on CPU queues. Adapt after
 inspection. Batch jobs survive SSH logout; tmux is not needed for them. A job
 time limit still applies. Resubmit the same command to resume; automatic
 resubmission/requeue is intentionally not assumed.
+
+For four-GPU Slurm embedding, set `FINANCE_GPUS=4` and `FINANCE_BATCH_SIZE=256`,
+and request four GPUs and sufficient CPUs, for example `--gres=gpu:4
+--cpus-per-task=8 --mem=32G` in the site-specific embedding submission above.
+The batch script defaults to one GPU and preserves Slurm's GPU visibility mask.
 
 The fetch batch script uses `SLURM_CPUS_PER_TASK` workers by default. You can
 override it with `FINANCE_WORKERS`, within the allocated CPU count.
@@ -314,6 +370,7 @@ rsync -avP user@cluster:projects/sentiment_data/runs/fre/finance-2012-all-v1/ /l
 | `counts.sqlite` | Annual counts, source receipts, vector row-to-text map, embedding checkpoint |
 | `embeddings.npy` | Row-aligned 768-dimensional vectors, memory-mappable |
 | `embeddings.json` | Shape, dtype, model revision, pooling/preprocessing, package versions |
+| `embedding_execution.json` | Latest device list, per-device batch size and number of vectors reused |
 | `stats.json` | Summary from the most recent completed stage (`status` reads live receipts) |
 
 Every distinct cleaned five-gram is encoded once, independent of year. Yearly

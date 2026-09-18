@@ -35,8 +35,10 @@ def main():
                        help="Independent shard-filter processes; one coordinated database writer (default: 1)")
     vectors = commands.add_parser("embed", help="Save one BERT vector per distinct context; no anchors needed")
     vectors.add_argument("--run-dir", required=True, type=Path)
-    vectors.add_argument("--device", default="cuda")
-    vectors.add_argument("--batch-size", type=positive_int, default=64)
+    device_options = vectors.add_mutually_exclusive_group()
+    device_options.add_argument("--device", default="cuda")
+    device_options.add_argument("--devices", nargs="+", help="One worker per GPU, e.g. cuda:0 cuda:1 cuda:2 cuda:3")
+    vectors.add_argument("--batch-size", type=positive_int, default=64, help="Contexts per batch per device")
     vectors.add_argument("--dtype", choices=["float32", "float16"], default="float32")
     vectors.add_argument("--offline", action="store_true", help="Use a previously populated model cache")
     status = commands.add_parser("status")
@@ -64,8 +66,8 @@ def main():
             with sqlite3.connect((args.run_dir / "counts.sqlite").resolve().as_uri() + "?mode=ro", uri=True) as conn:
                 stats = statistics(conn, len(identity["manifest"]["shards"]))
                 if conn.execute("SELECT 1 FROM sqlite_master WHERE name='embedding_progress'").fetchone():
-                    row = conn.execute("SELECT next_row FROM embedding_progress WHERE singleton=1").fetchone()
-                    stats["embedded_contexts"] = row[0] if row else 0
+                    from .embeddings import completed_embeddings
+                    stats["embedded_contexts"] = completed_embeddings(conn)
                     stats["embedding_complete"] = stats["embedded_contexts"] == stats["unique_contexts"]
                 print(json.dumps(stats, indent=2))
         else:
@@ -74,7 +76,7 @@ def main():
                     retrieve(args.run_dir, load_config(args.config), json.loads(args.manifest.read_text()), args.limit, args.retries, args.workers)
                 elif args.command == "embed":
                     from .embeddings import embed
-                    embed(args.run_dir, device=args.device, batch_size=args.batch_size, dtype=args.dtype, offline=args.offline)
+                    embed(args.run_dir, device=args.device, devices=args.devices, batch_size=args.batch_size, dtype=args.dtype, offline=args.offline)
                 elif args.command == "projector":
                     from .search import export_projector
                     export_projector(args.run_dir, args.output, args.limit)
