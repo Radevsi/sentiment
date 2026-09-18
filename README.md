@@ -165,3 +165,9 @@ serialized BERT/tokenizer objects, a small 1870 sample, and final annual data.
 Their implementation expands annual match counts into repeated lines and then
 counts duplicates. This v1 sums `match_count` directly, which is algebraically
 equivalent but far less expensive in disk and memory.
+
+## Interactive map of all saved French contexts
+
+See [the all-context embedding map guide](docs/embedding-map.md) for a local WebGL
+viewer, seeded UMAP precomputation, cache/resume behavior, and exact server/SSH
+commands. It reuses the completed French run's vectors and preserves every row ID.

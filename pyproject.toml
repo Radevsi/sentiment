@@ -15,12 +15,17 @@ dependencies = [
 dev = ["pytest>=8"]
 download = ["google-ngram-downloader"]
 ml = ["torch>=2.2", "transformers>=4.40,<5"]
+map = ["umap-learn==0.5.8"]
 
 [project.scripts]
 finance-extract = "finance_sentiment.extract:main"
 finance-score = "finance_sentiment.score:main"
 finance-pipeline = "finance_sentiment.pipeline:main"
 finance-query = "finance_sentiment.search:main"
+finance-map = "finance_sentiment.map:main"
+
+[tool.setuptools.package-data]
+finance_sentiment = ["map_static/*.html", "map_static/*.js", "map_static/*.css"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
