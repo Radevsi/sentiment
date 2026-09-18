@@ -45,7 +45,7 @@ def test_retrieval_filters_aggregates_and_resumes_without_double_count(corpus):
     retrieve(root, config, manifest, limit=1)
     assert not json.loads((root / "stats.json").read_text())["retrieval_complete"]
     with pytest.raises(ValueError, match="Finish retrieval"):
-        embed(root)
+        embed(root, encoder_factory=FakeEncoder)
     retrieve(root, config, manifest)
     retrieve(root, config, manifest)
     stats = json.loads((root / "stats.json").read_text())
@@ -379,3 +379,83 @@ def test_vector_write_interruption_does_not_advance_receipt(corpus, monkeypatch)
     embed(root, encoder_factory=FakeEncoder)
     _, conn, _ = open_vectors(root)
     conn.close()
+
+
+def test_environment_repair_allowed_only_before_first_committed_vector(corpus):
+    root, config, manifest = corpus
+    retrieve(root, config, manifest)
+    with pytest.raises(RuntimeError, match="GPU setup failure"):
+        embed(root, encoder_factory=FailedEncoder)
+    info = root / "embeddings.json"
+    metadata = json.loads(info.read_text())
+    metadata["packages"]["numpy"] = "old-broken-environment"
+    info.write_text(json.dumps(metadata))
+    embed(root, encoder_factory=FakeEncoder)
+    assert json.loads(info.read_text())["packages"]["numpy"] != "old-broken-environment"
+    metadata = json.loads(info.read_text())
+    metadata["packages"]["numpy"] = "different-version"
+    info.write_text(json.dumps(metadata))
+    with pytest.raises(ValueError, match="package versions changed"):
+        embed(root, encoder_factory=FakeEncoder)
+
+
+def test_import_preflight_preserves_underlying_cause(monkeypatch):
+    import builtins
+    from types import SimpleNamespace
+    from finance_sentiment.score import load_bert_dependencies
+    original = builtins.__import__
+    def broken(name, *args, **kwargs):
+        if name == "torch":
+            return SimpleNamespace()
+        if name == "transformers":
+            raise ModuleNotFoundError("No module named 'scipy'", name="scipy")
+        return original(name, *args, **kwargs)
+    monkeypatch.setattr(builtins, "__import__", broken)
+    with pytest.raises(RuntimeError, match="python -I") as error:
+        load_bert_dependencies()
+    assert isinstance(error.value.__cause__, ModuleNotFoundError)
+    assert error.value.__cause__.name == "scipy"
+
+
+def test_dependency_preflight_fails_before_run_files_are_created(tmp_path, monkeypatch):
+    def fail():
+        raise RuntimeError("dependency preflight failed")
+    monkeypatch.setattr("finance_sentiment.embeddings.load_bert_dependencies", fail)
+    with pytest.raises(RuntimeError, match="preflight failed"):
+        embed(tmp_path / "does-not-exist", devices=["cuda:0", "cuda:1"])
+    assert not (tmp_path / "does-not-exist").exists()
+
+
+def test_isolated_python_excludes_injected_paths_in_spawned_workers(tmp_path):
+    import os
+    import subprocess
+    import sys
+    poison = tmp_path / "injected-packages"
+    poison.mkdir()
+    (poison / "unwanted_package.py").write_text("raise RuntimeError('user packages leaked')\n")
+    script = tmp_path / "check_spawn.py"
+    script.write_text('''
+import importlib.util
+import multiprocessing
+import site
+import sys
+
+def check():
+    assert sys.flags.isolated == 1
+    assert site.ENABLE_USER_SITE is False
+    assert importlib.util.find_spec("unwanted_package") is None
+
+if __name__ == "__main__":
+    check()
+    process = multiprocessing.get_context("spawn").Process(target=check)
+    process.start()
+    process.join(10)
+    if process.is_alive():
+        process.terminate()
+        process.join()
+        raise RuntimeError("Child did not exit")
+    assert process.exitcode == 0
+''')
+    result = subprocess.run([sys.executable, "-I", str(script)], env={**os.environ, "PYTHONPATH": str(poison)},
+                            capture_output=True, text=True, timeout=20)
+    assert result.returncode == 0, result.stdout + result.stderr

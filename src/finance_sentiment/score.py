@@ -43,12 +43,27 @@ def anchor_signature(config: dict) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
 
 
+def load_bert_dependencies():
+    """Import dependencies before expensive scans or spawning four failing workers."""
+    try:
+        import torch
+        from transformers import AutoModel, AutoTokenizer, BertModel
+    except Exception as error:
+        raise RuntimeError(
+            "BERT dependencies could not be imported. Inspect the original exception below/above. "
+            "If it refers to ~/.local/site-packages or ~/.local/lib, user packages are leaking into "
+            "the project environment. Retry with .venv/bin/python -I -m finance_sentiment.pipeline "
+            "and the same arguments; -I ignores PYTHONPATH and disables user-site packages. "
+            "Do not delete the downloaded corpus."
+        ) from error
+    return torch, AutoModel, AutoTokenizer
+
+
 class PaperBertEncoder:
     """Modern implementation of the authors' sum-last-four-[CLS] convention."""
 
     def __init__(self, config: dict, device: str):
-        import torch
-        from transformers import AutoModel, AutoTokenizer
+        torch, AutoModel, AutoTokenizer = load_bert_dependencies()
 
         self.torch = torch
         self.config = config

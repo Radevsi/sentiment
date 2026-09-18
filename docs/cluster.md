@@ -167,6 +167,45 @@ the updated setup command at the same `.venv` path. This disables inherited
 system packages without deleting the environment or touching the data directory.
 Developer tests are optional: install `pip install -e '.[dev]'` if needed.
 
+If BERT reports `Could not import module 'AutoModel'`, read the original error
+earlier in the traceback. For example, loading scikit-learn from
+`~/.local/lib/python3.10/site-packages` and then failing on missing `scipy` means
+an incomplete user installation is visible to Transformers. The Miniforge path
+for Python's **standard library** is normal when it is the venv's base Python;
+the relevant problem is the external third-party package path. Possible causes
+include the older system-site-enabled environment or inherited Python path
+settings. Do not treat the wrapper error as a missing BERT model or GPU failure.
+
+Use the isolated interpreter to exclude user-site packages and `PYTHONPATH`
+overrides without uninstalling shared packages:
+
+```bash
+cd "$HOME/projects/sentiment"
+.venv/bin/python -I - <<'PY'
+import sys, site, torch, transformers
+from transformers import AutoModel, AutoTokenizer, BertModel
+print("Python:", sys.executable)
+print("User packages enabled:", site.ENABLE_USER_SITE)
+print("PyTorch:", torch.__file__)
+print("Transformers:", transformers.__file__)
+print("BERT imports OK")
+PY
+```
+
+If successful, replace `finance-pipeline ...` with
+`.venv/bin/python -I -m finance_sentiment.pipeline ...` for model preparation and
+embedding. Spawned workers inherit isolation. `HF_HOME`, `CUDA_VISIBLE_DEVICES`
+and `OMP_NUM_THREADS` still work. See [Python isolated mode](https://docs.python.org/3.10/using/cmdline.html#cmdoption-I).
+If it still fails, inspect that full traceback and the printed package paths;
+do not blindly install dependencies into `~/.local`. The updated setup script
+also clears inherited Python path overrides and runs setup in isolated mode.
+
+Embedding now checks dependency imports before corpus scans, vector allocation,
+or spawning GPU workers. An environment repair can refresh recorded package
+versions only when **zero vectors have been committed**. Once any vectors have
+been saved, version changes remain blocked to avoid mixing representations.
+No dataset or checkpoint deletion is needed for the import repair.
+
 Retrieval needs only lightweight dependencies. Before embedding, use the
 cluster-approved CUDA-compatible PyTorch installation, then:
 
@@ -262,7 +301,7 @@ export HF_HOME="$HOME/projects/sentiment_data/cache/huggingface"
 export CUDA_VISIBLE_DEVICES=0,1,2,3
 export OMP_NUM_THREADS=2
 
-finance-pipeline embed \
+.venv/bin/python -I -m finance_sentiment.pipeline embed \
   --run-dir "$FINANCE_RUN" \
   --devices cuda:0 cuda:1 cuda:2 cuda:3 \
   --batch-size 256 --dtype float32 --offline

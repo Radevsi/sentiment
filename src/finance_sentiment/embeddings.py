@@ -13,7 +13,7 @@ import numpy as np
 
 from .corpus import statistics
 from .embedding_workers import encoded_batches
-from .score import PaperBertEncoder
+from .score import PaperBertEncoder, load_bert_dependencies
 from .tracking import log, write_json
 
 
@@ -67,6 +67,9 @@ def embed(root: Path, *, device="cuda", devices=None, batch_size=64, dtype="floa
     devices = list(devices) if devices is not None else [device]
     if not devices or len(set(devices)) != len(devices):
         raise ValueError("Supply distinct devices")
+    if encoder_factory is PaperBertEncoder:
+        log("2 embedding preflight: checking BERT dependency imports")
+        load_bert_dependencies()
     if len(devices) > 1 and encoder_factory is PaperBertEncoder:
         if any(not re.fullmatch(r"cuda:\d+", name) for name in devices):
             raise ValueError("Multiple devices must be explicit CUDA indices, e.g. cuda:0 cuda:1")
@@ -110,10 +113,16 @@ def embed(root: Path, *, device="cuda", devices=None, batch_size=64, dtype="floa
         if config.get("representation") != "sum_last_four_cls":
             raise ValueError("Only sum_last_four_cls is implemented")
         info = root / "embeddings.json"
-        if info.exists() and json.loads(info.read_text()) != metadata:
-            raise ValueError("Embedding settings or package versions changed; restore the original environment or use a new run")
         path = root / "embeddings.npy"
         already_done = completed_embeddings(connection)
+        if info.exists():
+            previous = json.loads(info.read_text())
+            if previous != metadata:
+                same_settings = {k: v for k, v in previous.items() if k != "packages"} == {
+                    k: v for k, v in metadata.items() if k != "packages"}
+                if already_done or not same_settings:
+                    raise ValueError("Embedding settings or package versions changed; restore the original environment or use a new run")
+                log("2 embedding: refreshing package metadata after environment repair; no vectors have been committed")
         ranges = missing_batches(connection, total, batch_size)
         if already_done and not path.exists():
             raise ValueError("Checkpoint exists but embeddings.npy is missing")

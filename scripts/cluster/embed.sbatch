@@ -24,5 +24,5 @@ for ((gpu_index=0; gpu_index<gpu_count; gpu_index++)); do
   devices+=("cuda:$gpu_index")
 done
 printf '[%s] 1/1 Embed on %s GPU(s); resume saved batches\n' "$(date -Is)" "$gpu_count"
-"$FINANCE_VENV/bin/finance-pipeline" embed --run-dir "$FINANCE_RUN" --devices "${devices[@]}" --offline --batch-size "${FINANCE_BATCH_SIZE:-64}"
+"$FINANCE_VENV/bin/python" -I -m finance_sentiment.pipeline embed --run-dir "$FINANCE_RUN" --devices "${devices[@]}" --offline --batch-size "${FINANCE_BATCH_SIZE:-64}"
 printf '[%s] Embedding complete; step/overall elapsed %ss\n' "$(date -Is)" "$((SECONDS-started))"
