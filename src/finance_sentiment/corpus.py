@@ -7,7 +7,11 @@ import hashlib
 import http.client
 import io
 import json
+import multiprocessing
+from multiprocessing.connection import wait
+import os
 from pathlib import Path
+import signal
 import sqlite3
 import time
 from urllib.parse import urlencode, quote
@@ -57,8 +61,9 @@ def discover(language: str, selection: str = "all") -> dict:
 
 
 class MeteredReader:
-    def __init__(self, response, total: int):
+    def __init__(self, response, total: int, label: str = "shard"):
         self.response, self.total = response, total
+        self.label = label
         self.count = 0
         self.md5 = hashlib.md5()
         self.start = self.last = time.monotonic()
@@ -70,8 +75,9 @@ class MeteredReader:
         now = time.monotonic()
         if now - self.last >= 30:
             rate = self.count / max(now-self.start, .001)
-            log(f"compressed stream {self.count:,}/{self.total:,} bytes; "
-                f"{rate/1e6:.2f} MB/s; shard ETA estimate {(self.total-self.count)/max(rate,1):.0f}s")
+            log(f"{self.label}: download+decompress+filter {self.count:,}/{self.total:,} compressed bytes; "
+                f"{rate/1e6:.2f} MB/s; elapsed {now-self.start:.0f}s; "
+                f"shard ETA estimate {(self.total-self.count)/max(rate,1):.0f}s")
             self.last = now
         return data
 
@@ -80,9 +86,10 @@ def filter_stream(shard: dict, config: dict, destination: Path) -> tuple[int, in
     """Retain only matches; verify compressed length, MD5 and gzip CRC before import."""
     matched = scanned = 0
     targets = [s.lower() for s in config["target_substrings"]]
+    single_target = targets[0] if len(targets) == 1 else None
     request = Request(shard["url"], headers={"Accept-Encoding": "identity"})
     with urlopen(request, timeout=120) as response:
-        meter = MeteredReader(response, shard["size"])
+        meter = MeteredReader(response, shard["size"], shard["name"])
         with gzip.GzipFile(fileobj=meter, mode="rb") as gz:
             with io.TextIOWrapper(gz, encoding="utf-8", errors="strict") as source:
                 with gzip.open(destination, "wt", encoding="utf-8", compresslevel=3) as out:
@@ -92,7 +99,9 @@ def filter_stream(shard: dict, config: dict, destination: Path) -> tuple[int, in
                         if len(fields) != 4:
                             raise ValueError(f"Unexpected 2012 record at line {scanned}")
                         raw, year, count, _volume_count = fields
-                        if not any(target in raw.lower() for target in targets):
+                        lowered = raw.lower()
+                        if not (single_target in lowered if single_target is not None
+                                else any(target in lowered for target in targets)):
                             continue
                         year, count = int(year), int(count)
                         if config["year_start"] <= year <= config["year_end"] and count > 0:
@@ -137,35 +146,151 @@ def bind_run(root: Path, config: dict, manifest: dict) -> None:
         write_json(path, identity)
 
 
-def retrieve(root: Path, config: dict, manifest: dict, limit: int | None = None, retries: int = 3) -> None:
+def shard_paths(root: Path, shard: dict) -> tuple[Path, Path]:
+    directory = root / ".matching-shards"
+    key = digest(shard)
+    return directory / f"{key}.jsonl.gz", directory / f"{key}.ready.json"
+
+
+def prepare_shard(root: Path, shard: dict, config: dict, retries: int) -> tuple[Path, int, int]:
+    """Workers only write their own filtered files; the parent alone writes SQLite."""
+    filtered, receipt = shard_paths(root, shard)
+    filtered.parent.mkdir(parents=True, exist_ok=True)
+    signature = digest({"shard": shard, "config": config})
+    if receipt.exists() and filtered.exists():
+        saved = json.loads(receipt.read_text())
+        if saved["signature"] != signature:
+            raise ValueError(f"Filtered checkpoint does not match {shard['name']}")
+        log(f"reuse verified filtered checkpoint: {shard['name']}")
+        return filtered, saved["matched"], saved["scanned"]
+    temporary = filtered.with_suffix(filtered.suffix + ".partial")
+    with stage(f"1 filter / {shard['name']}"):
+        for attempt in range(1, retries+1):
+            try:
+                matched, scanned = filter_stream(shard, config, temporary)
+                break
+            except (OSError, EOFError, ValueError, http.client.HTTPException) as error:
+                log(f"{shard['name']}: stream attempt {attempt}/{retries} failed: {error}")
+                if attempt == retries:
+                    raise
+                time.sleep(min(2**attempt, 30))
+        with temporary.open("rb") as handle:
+            os.fsync(handle.fileno())
+        temporary.replace(filtered)
+        write_json(receipt, {"signature": signature, "matched": matched, "scanned": scanned})
+    return filtered, matched, scanned
+
+
+def remove_filtered(root: Path, shard: dict) -> None:
+    filtered, receipt = shard_paths(root, shard)
+    receipt.unlink(missing_ok=True)
+    filtered.unlink(missing_ok=True)
+    filtered.with_suffix(filtered.suffix + ".partial").unlink(missing_ok=True)
+
+
+def prepare_worker(sender, root, shard, config, retries):
+    # The parent handles Ctrl-C and terminates its workers before releasing the run lock.
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+    try:
+        sender.send((True, prepare_shard(root, shard, config, retries)))
+    except Exception as error:
+        sender.send((False, error))
+    finally:
+        sender.close()
+
+
+def prepared_shards(root, remaining, config, retries, workers):
+    if workers == 1:
+        for shard in remaining:
+            yield shard, prepare_shard(root, shard, config, retries)
+        return
+    # Spawn prevents inheritance of the parent's open SQLite connection or run lock.
+    # At most `workers` jobs are in flight. A slow importer cannot queue the whole corpus on disk.
+    context = multiprocessing.get_context("spawn")
+    pending = []
+    try:
+        todo = iter(remaining)
+        exhausted = False
+        while pending or not exhausted:
+            while len(pending) < workers and not exhausted:
+                shard = next(todo, None)
+                if shard is None:
+                    exhausted = True
+                else:
+                    receiver, sender = context.Pipe(duplex=False)
+                    process = context.Process(target=prepare_worker, args=(sender, root, shard, config, retries))
+                    try:
+                        process.start()
+                    except BaseException:
+                        receiver.close()
+                        if process.pid is not None:
+                            process.terminate()
+                            process.join()
+                        raise
+                    finally:
+                        sender.close()
+                    pending.append((shard, process, receiver))
+            if not pending:
+                continue
+            wait([receiver for _, _, receiver in pending] + [process.sentinel for _, process, _ in pending])
+            for i, (shard, process, receiver) in enumerate(pending):
+                if receiver.poll():
+                    try:
+                        success, result = receiver.recv()
+                    except EOFError as error:
+                        raise RuntimeError(f"Worker exited without a result: {shard['name']}; rerun to resume") from error
+                    process.join()
+                    process.close()
+                    receiver.close()
+                    pending.pop(i)
+                    if not success:
+                        raise result
+                    yield shard, result
+                    break
+                if process.exitcode is not None:
+                    raise RuntimeError(f"Worker exited with code {process.exitcode}: {shard['name']}; rerun to resume")
+    finally:
+        for _, process, receiver in pending:
+            if process.is_alive():
+                process.terminate()
+            process.join()
+            process.close()
+            receiver.close()
+
+
+def retrieve(root: Path, config: dict, manifest: dict, limit: int | None = None, retries: int = 3, workers: int = 1) -> None:
+    if workers < 1 or retries < 1 or (limit is not None and limit < 1):
+        raise ValueError("workers, retries, and limit must be positive")
     bind_run(root, config, manifest)
     size = sum(shard["size"] for shard in manifest["shards"])
     log(f"1 retrieval: {manifest['selection']}; {len(manifest['shards'])} source shards; "
         f"{size/1e9:.2f} GB compressed; targets={config['target_substrings']}; "
-        f"years={config['year_start']}-{config['year_end']}; completed shards will be skipped")
+        f"years={config['year_start']}-{config['year_end']}; {workers} worker(s); completed shards will be skipped")
     database = root / "counts.sqlite"
     with sqlite3.connect(database) as connection:
         # Rollback journal, not WAL: single writer and cluster filesystem compatibility.
         connection.executescript(SCHEMA + EXTRA_SCHEMA)
         completed = {name for name, in connection.execute("SELECT name FROM sources")}
+        for shard in manifest["shards"]:
+            if shard["name"] in completed:
+                remove_filtered(root, shard)
+        # Legacy single-worker temporary data has no verified completion receipt.
+        (root / "matching-shard.jsonl.gz.partial").unlink(missing_ok=True)
         remaining = [s for s in manifest["shards"] if s["name"] not in completed]
         if limit is not None:
             remaining = remaining[:limit]
-        for i, shard in enumerate(remaining, 1):
-            with stage(f"1 retrieval / shard {len(completed)+i}/{len(manifest['shards'])}: {shard['name']}"):
-                temporary = root / "matching-shard.jsonl.gz.partial"
-                for attempt in range(1, retries+1):
-                    try:
-                        matched, scanned = filter_stream(shard, config, temporary)
-                        break
-                    except (OSError, EOFError, ValueError, http.client.HTTPException) as error:
-                        log(f"stream attempt {attempt}/{retries} failed: {error}")
-                        if attempt == retries:
-                            raise
-                        time.sleep(min(2**attempt, 30))
-                import_shard(connection, shard, config, temporary, matched, scanned)
-                temporary.unlink(missing_ok=True)
-                log(f"retained {matched:,} matching records / {scanned:,} scanned")
+        if remaining:
+            prepared = prepared_shards(root, remaining, config, retries, min(workers, len(remaining)))
+            try:
+                for i, (shard, (filtered, matched, scanned)) in enumerate(prepared, 1):
+                    with stage(f"1 import / {shard['name']}"):
+                        import_shard(connection, shard, config, filtered, matched, scanned)
+                    remove_filtered(root, shard)
+                    log(f"committed {len(completed)+i}/{len(manifest['shards'])} shards; "
+                        f"{shard['name']}: retained {matched:,} matching records / {scanned:,} scanned")
+            finally:
+                # Also terminate workers if the importer fails or the user interrupts.
+                prepared.close()
         summary = statistics(connection, len(manifest["shards"]))
         write_json(root / "stats.json", summary)
         log(json.dumps(summary))

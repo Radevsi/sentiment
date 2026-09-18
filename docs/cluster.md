@@ -92,15 +92,38 @@ provide the original book passages.
 
 Keep the Git checkout small. Prefer an approved persistent project/work path
 outside the checkout for results. Git ignore rules protect against accidental
-commits; they do not move files or change quotas. Suggested layout:
+commits; they do not move files or change quotas. For this server the repository
+is `~/projects/sentiment` and the data root is `~/projects/sentiment_data`.
+Use a separate run directory per language and experiment:
 
 ```text
-approved-project-directory/finance/
-  runs/fre-financ-2012-all/       # Durable data, vectors, metadata, checkpoints
-  cache/huggingface/             # Pinned model; shared with GPU node
-  logs/                         # Scheduler logs
-  environments/finance/          # If home quota is small
+~/projects/sentiment/                         # Repository and .venv only
+~/projects/sentiment_data/
+  runs/
+    fre/finance-2012-all-v1/                  # French counts, vectors, checkpoints
+    ger/finance-2012-all-v1/                  # Future German run
+    spa/finance-2012-all-v1/                  # Future Spanish run
+  cache/huggingface/                         # Shared model/tokenizer cache
+  logs/fre/                                 # Logs grouped by language
 ```
+
+`FINANCE_DATA` is the shared data root; `FINANCE_RUN` is the one run currently
+being processed. The scripts already accept an arbitrary `--run-dir` and check
+that config and manifest languages agree. Each additional language needs its
+own config (including appropriate target stems) and 2012 source manifest;
+changing the folder name alone does not change the language being retrieved.
+The German/Spanish folders above are examples, not preconfigured experiments.
+If an earlier run already exists at `fre-financ-2012-all`, keep using that path
+or move its entire directory while all jobs are stopped; do not start a second
+copy of the same retrieval just to adopt the new naming scheme.
+
+Hugging Face hosts the pretrained multilingual BERT weights, tokenizer and
+model configuration used by the embedding stage. The n-gram data comes from
+Google Storage. `HF_HOME` selects where the model downloads are cached; setting
+it does not itself download anything, and `fetch` never uses that cache.
+All languages using the same pinned multilingual model reuse the same cached
+files. Embedding runs on the server, without sending contexts to a hosted model
+API. See the [Hugging Face cache guide](https://huggingface.co/docs/huggingface_hub/guides/manage-cache).
 
 The pipeline streams compressed bytes and decompresses in memory, writes only
 matching records into a temporary compressed file, commits those matches to
@@ -111,7 +134,8 @@ one config if their union is desired. That config's corpus is the union, not
 separate per-term statistics. For separate term corpora use separate runs.
 
 Allow space for the database, its indexes/journal, one matching-shard temporary
-file, model cache, software environment, and vectors. Exact filtered storage
+file per worker (plus any verified checkpoints from interrupted runs), model
+cache, software environment, and vectors. Exact filtered storage
 cannot be promised before retrieval. Largest compressed source shard is
 9.75 GB, but it is streamed rather than staged on disk. A one-shard pilot checks
 operation, not a statistically valid estimate of this alphabetically partitioned
@@ -131,19 +155,29 @@ before relying on purged scratch. No automatic deletion of final results occurs.
 Use Python 3.10+ and the site's recommended environment/modules. From the repo:
 
 ```bash
-bash scripts/cluster/setup.sh /approved/path/environments/finance
-source /approved/path/environments/finance/bin/activate
+cd "$HOME/projects/sentiment"
+bash scripts/cluster/setup.sh .venv
+source .venv/bin/activate
 ```
+
+Setup isolates the environment from the server's existing Python packages and
+checks dependencies with `pip check`. If an older setup printed missing
+dependencies for unrelated packages such as `spektral` or `scikit-learn`, rerun
+the updated setup command at the same `.venv` path. This disables inherited
+system packages without deleting the environment or touching the data directory.
+Developer tests are optional: install `pip install -e '.[dev]'` if needed.
 
 Retrieval needs only lightweight dependencies. Before embedding, use the
 cluster-approved CUDA-compatible PyTorch installation, then:
 
 ```bash
 python -m pip install --progress-bar on -e '.[ml]'
-export HF_HOME=/approved/path/cache/huggingface
+export FINANCE_DATA="$HOME/projects/sentiment_data"
+export HF_HOME="$FINANCE_DATA/cache/huggingface"
+mkdir -p "$FINANCE_DATA/logs"
 finance-pipeline prepare-model --config configs/french_finance_cluster.json
-python -m pip freeze > /approved/path/logs/environment.txt
-git rev-parse HEAD > /approved/path/logs/code-commit.txt
+python -m pip freeze > "$FINANCE_DATA/logs/environment.txt"
+git rev-parse HEAD > "$FINANCE_DATA/logs/code-commit.txt"
 ```
 
 Create the logs directory first. `prepare-model` downloads weights/tokenizer
@@ -156,29 +190,58 @@ See [Hugging Face cache/offline documentation](https://huggingface.co/docs/trans
 
 ## Run and resume
 
-Set paths appropriate to the cluster; `/approved/path` is a placeholder:
+Set the shared root and current language/run. These settings select French;
+set matching config and manifest paths when adding another language:
 
 ```bash
-export FINANCE_REPO=/absolute/path/to/checkout
-export FINANCE_VENV=/approved/path/environments/finance
-export FINANCE_RUN=/approved/path/runs/fre-financ-2012-all
-export HF_HOME=/approved/path/cache/huggingface
-mkdir -p /approved/path/logs
+export FINANCE_REPO="$HOME/projects/sentiment"
+export FINANCE_DATA="$HOME/projects/sentiment_data"
+export FINANCE_LANGUAGE=fre
+export FINANCE_VENV="$FINANCE_REPO/.venv"
+export FINANCE_RUN="$FINANCE_DATA/runs/$FINANCE_LANGUAGE/finance-2012-all-v1"
+export FINANCE_CONFIG="$FINANCE_REPO/configs/french_finance_cluster.json"
+export FINANCE_MANIFEST="$FINANCE_REPO/manifests/fre-2012-5-all.json"
+export HF_HOME="$FINANCE_DATA/cache/huggingface"
+mkdir -p "$FINANCE_DATA/logs/$FINANCE_LANGUAGE"
+cd "$FINANCE_REPO"
+source "$FINANCE_VENV/bin/activate"
 ```
 
 On a host where long retrieval is permitted:
 
 ```bash
 finance-pipeline fetch \
-  --config configs/french_finance_cluster.json \
-  --manifest manifests/fre-2012-5-all.json \
-  --run-dir "$FINANCE_RUN"
+  --config "$FINANCE_CONFIG" \
+  --manifest "$FINANCE_MANIFEST" \
+  --run-dir "$FINANCE_RUN" \
+  --workers 4
 
 # On a GPU allocation, after retrieval completes:
 finance-pipeline embed --run-dir "$FINANCE_RUN" --device cuda --batch-size 64 --offline
 
 finance-pipeline status --run-dir "$FINANCE_RUN"
 ```
+
+`--workers 4` processes up to four independent shards on separate CPU cores.
+The default remains 1. Use no more workers than your available/allocated CPUs;
+four is a starting point for the shared GPU server, not a promise of 4x speed.
+Only the coordinator writes SQLite, and at most that many filter jobs are in
+flight, so slow database imports do not accumulate a full-corpus backlog.
+Small shards incur process-start overhead; network/storage limits and the last
+large shard can also limit scaling. Each worker uses a separate temporary file.
+
+The reported MB/s measures **download + decompression + filtering** in compressed
+bytes per second, not raw network bandwidth. If a single process is near 100%
+CPU in `top`, one CPU core is saturated even if the rest of the server is idle.
+Progress lines identify the shard, so rates from different workers can be
+distinguished; a worker can still show 3.5 MB/s while several run concurrently.
+
+To upgrade an existing serial run, push/pull the updated code, stop the old
+process with Ctrl-C, and repeat the same fetch command and run directory with
+`--workers 4`. Ideally stop just after a shard completes to avoid repeating its
+scan. Do not launch a second fetch before the first exits. Completed source
+receipts remain compatible; workers are an execution setting, not a new corpus.
+No new dependency installation is needed for this parallel-processing change.
 
 If GPU memory is insufficient, repeat `embed` with batch size 32 or 16. Settings
 that affect vector identity/dtype and library versions cannot change mid-run.
@@ -193,11 +256,11 @@ are starting requests, not measured requirements:
 
 ```bash
 sbatch --account=ACCOUNT --partition=CPU_QUEUE --time=24:00:00 --mem=8G \
-  --output=/approved/path/logs/fetch-%j.log scripts/cluster/fetch.sbatch
+  --output="$FINANCE_DATA/logs/$FINANCE_LANGUAGE/fetch-%j.log" scripts/cluster/fetch.sbatch
 
 # After fetch succeeds (or use --dependency=afterok:FETCH_JOB_ID):
 sbatch --account=ACCOUNT --partition=GPU_QUEUE --gres=gpu:1 \
-  --time=08:00:00 --mem=16G --output=/approved/path/logs/embed-%j.log \
+  --time=08:00:00 --mem=16G --output="$FINANCE_DATA/logs/$FINANCE_LANGUAGE/embed-%j.log" \
   scripts/cluster/embed.sbatch
 ```
 
@@ -206,6 +269,9 @@ module loads in the job, or disallow outbound HTTPS on CPU queues. Adapt after
 inspection. Batch jobs survive SSH logout; tmux is not needed for them. A job
 time limit still applies. Resubmit the same command to resume; automatic
 resubmission/requeue is intentionally not assumed.
+
+The fetch batch script uses `SLURM_CPUS_PER_TASK` workers by default. You can
+override it with `FINANCE_WORKERS`, within the allocated CPU count.
 
 **Unscheduled server or approved long-running host:** `tmux new -s finance`,
 activate the environment, and run the commands. Detach with Ctrl-b then d;
@@ -221,6 +287,14 @@ Completed shards are skipped. Embeddings are flushed to disk before saving the
 batch checkpoint. A crash can redo the last unsaved batch safely. Do not run the
 legacy `finance-extract` command on these databases or edit them by hand.
 
+With the updated fetcher, fully filtered and verified shards awaiting import
+have durable receipts under `.matching-shards/`. Those results are reused after
+an interruption without downloading the source again; they are deleted after
+their database transaction commits. Partially filtered shards restart from the
+beginning. Ctrl-C or an import failure stops the worker processes before the
+coordinator releases its run lock. Abrupt worker failures are reported rather
+than leaving the coordinator waiting indefinitely.
+
 Logs report timestamps, named stages, stage/overall duration, compressed-byte
 throughput and current-shard ETA, or contexts/sec and embedding ETA. There is
 no speculative total retrieval ETA before measuring the actual scan rate.
@@ -231,7 +305,7 @@ Copy the complete run directory only after jobs finish:
 
 ```bash
 # Run on your own machine; replace user/host and both paths:
-rsync -avP user@cluster:/approved/path/runs/fre-financ-2012-all/ /local/destination/fre-financ-2012-all/
+rsync -avP user@cluster:projects/sentiment_data/runs/fre/finance-2012-all-v1/ /local/destination/fre/finance-2012-all-v1/
 ```
 
 | File | Contents |
@@ -269,7 +343,7 @@ For exploratory visualization without W&B:
 
 ```bash
 finance-pipeline projector --run-dir "$FINANCE_RUN" \
-  --output /approved/path/projector-sample --limit 5000
+  --output "$FINANCE_DATA/projector/$FINANCE_LANGUAGE/finance-2012-all-v1" --limit 5000
 ```
 
 This writes reproducibly sampled `vectors.tsv` and `metadata.tsv` suitable for

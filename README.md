@@ -27,6 +27,9 @@ The new entry points are `finance-pipeline` and `finance-query`;
 sentiment anchors. For another language or target, copy the config, create the
 corresponding manifest, and use a separate run directory. Retrieval installs
 without PyTorch; embedding/query/scoring require the `ml` extra.
+Pass `--workers 4` to `finance-pipeline fetch` to scan independent shards on
+four CPU processes with one database writer. Existing serial runs resume in
+the same directory; stop the old process before restarting with more workers.
 
 ## Original annual-sentiment workflow
 

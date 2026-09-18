@@ -1,19 +1,25 @@
 #!/usr/bin/env bash
-# Run from the repository root. Use the cluster's Python/PyTorch modules first, if provided.
+# Run from the repository root using the cluster's Python 3.10+ interpreter.
 set -Eeuo pipefail
 started=$SECONDS
 trap 'printf "[%s] FAILED setup at line %s; total elapsed %ss\n" "$(date -Is)" "$LINENO" "$((SECONDS-started))" >&2' ERR
 venv_path=${1:-.venv}
 step=$SECONDS
-printf '[%s] 1/3 Create environment: %s\n' "$(date -Is)" "$venv_path"
-python3 -m venv --system-site-packages "$venv_path"
+printf '[%s] 1/4 Create/update isolated environment: %s\n' "$(date -Is)" "$venv_path"
+# Reusing the path also disables system-site-packages in older environments.
+# No --clear: preserve packages already installed inside this environment.
+python3 -m venv "$venv_path"
 printf 'Step elapsed: %ss\n' "$((SECONDS-step))"
 step=$SECONDS
-printf '[%s] 2/3 Install retrieval tools (pip progress enabled)\n' "$(date -Is)"
-"$venv_path/bin/python" -m pip install --progress-bar on -e '.[dev]'
+printf '[%s] 2/4 Install retrieval tools (pip progress enabled)\n' "$(date -Is)"
+"$venv_path/bin/python" -m pip install --progress-bar on -e .
 printf 'Step elapsed: %ss\n' "$((SECONDS-step))"
 step=$SECONDS
-printf '[%s] 3/3 Verify command entry point\n' "$(date -Is)"
+printf '[%s] 3/4 Check dependency consistency\n' "$(date -Is)"
+"$venv_path/bin/python" -m pip check
+printf 'Step elapsed: %ss\n' "$((SECONDS-step))"
+step=$SECONDS
+printf '[%s] 4/4 Verify command entry point\n' "$(date -Is)"
 "$venv_path/bin/finance-pipeline" --help
 printf 'Step elapsed: %ss; overall elapsed: %ss\n' "$((SECONDS-step))" "$((SECONDS-started))"
 printf 'Activate with: source "%s/bin/activate"\n' "$venv_path"

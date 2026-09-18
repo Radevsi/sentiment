@@ -31,6 +31,8 @@ def main():
     fetch.add_argument("--run-dir", required=True, type=Path)
     fetch.add_argument("--limit", type=positive_int, help="Process at most this many unfinished shards (pilot); rerun without limit to finish")
     fetch.add_argument("--retries", type=positive_int, default=3)
+    fetch.add_argument("--workers", type=positive_int, default=1,
+                       help="Independent shard-filter processes; one coordinated database writer (default: 1)")
     vectors = commands.add_parser("embed", help="Save one BERT vector per distinct context; no anchors needed")
     vectors.add_argument("--run-dir", required=True, type=Path)
     vectors.add_argument("--device", default="cuda")
@@ -69,7 +71,7 @@ def main():
         else:
             with run_lock(args.run_dir):
                 if args.command == "fetch":
-                    retrieve(args.run_dir, load_config(args.config), json.loads(args.manifest.read_text()), args.limit, args.retries)
+                    retrieve(args.run_dir, load_config(args.config), json.loads(args.manifest.read_text()), args.limit, args.retries, args.workers)
                 elif args.command == "embed":
                     from .embeddings import embed
                     embed(args.run_dir, device=args.device, batch_size=args.batch_size, dtype=args.dtype, offline=args.offline)

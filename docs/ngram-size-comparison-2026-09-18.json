@@ -1,0 +1,186 @@
+{
+  "checked_date": "2026-09-18",
+  "ngram_length": 5,
+  "unit": "bytes; compressed .gz objects only",
+  "rows": [
+    {
+      "language": "chi_sim",
+      "release": "20120701",
+      "files": 519,
+      "compressed_bytes": 156032371381,
+      "metadata_url": "https://storage.googleapis.com/storage/v1/b/books/o?prefix=ngrams%2Fbooks%2Fgooglebooks-chi-sim-all-5gram-20120701-&maxResults=1000",
+      "prefix": "ngrams/books/googlebooks-chi-sim-all-5gram-20120701-"
+    },
+    {
+      "language": "chi_sim",
+      "release": "20200217",
+      "files": 105,
+      "compressed_bytes": 38514181758,
+      "metadata_url": "https://storage.googleapis.com/storage/v1/b/books/o?prefix=ngrams%2Fbooks%2F20200217%2Fchi_sim%2F5-&maxResults=1000",
+      "prefix": "ngrams/books/20200217/chi_sim/5-"
+    },
+    {
+      "language": "eng",
+      "release": "20120701",
+      "files": 723,
+      "compressed_bytes": 253534113456,
+      "metadata_url": "https://storage.googleapis.com/storage/v1/b/books/o?prefix=ngrams%2Fbooks%2Fgooglebooks-eng-all-5gram-20120701-&maxResults=1000",
+      "prefix": "ngrams/books/googlebooks-eng-all-5gram-20120701-"
+    },
+    {
+      "language": "eng",
+      "release": "20200217",
+      "files": 19423,
+      "compressed_bytes": 8179330805793,
+      "metadata_url": "https://storage.googleapis.com/storage/v1/b/books/o?prefix=ngrams%2Fbooks%2F20200217%2Feng%2F5-&maxResults=1000",
+      "prefix": "ngrams/books/20200217/eng/5-"
+    },
+    {
+      "language": "eng-fiction",
+      "release": "20120701",
+      "files": 669,
+      "compressed_bytes": 32184374987,
+      "metadata_url": "https://storage.googleapis.com/storage/v1/b/books/o?prefix=ngrams%2Fbooks%2Fgooglebooks-eng-fiction-all-5gram-20120701-&maxResults=1000",
+      "prefix": "ngrams/books/googlebooks-eng-fiction-all-5gram-20120701-"
+    },
+    {
+      "language": "eng-fiction",
+      "release": "20200217",
+      "files": 1449,
+      "compressed_bytes": 659021153653,
+      "metadata_url": "https://storage.googleapis.com/storage/v1/b/books/o?prefix=ngrams%2Fbooks%2F20200217%2Feng-fiction%2F5-&maxResults=1000",
+      "prefix": "ngrams/books/20200217/eng-fiction/5-"
+    },
+    {
+      "language": "eng-gb",
+      "release": "20120701",
+      "files": 709,
+      "compressed_bytes": 72131785682,
+      "metadata_url": "https://storage.googleapis.com/storage/v1/b/books/o?prefix=ngrams%2Fbooks%2Fgooglebooks-eng-gb-all-5gram-20120701-&maxResults=1000",
+      "prefix": "ngrams/books/googlebooks-eng-gb-all-5gram-20120701-"
+    },
+    {
+      "language": "eng-gb",
+      "release": "20200217",
+      "files": 3098,
+      "compressed_bytes": 1813356757151,
+      "metadata_url": "https://storage.googleapis.com/storage/v1/b/books/o?prefix=ngrams%2Fbooks%2F20200217%2Feng-gb%2F5-&maxResults=1000",
+      "prefix": "ngrams/books/20200217/eng-gb/5-"
+    },
+    {
+      "language": "eng-us",
+      "release": "20120701",
+      "files": 722,
+      "compressed_bytes": 187196538846,
+      "metadata_url": "https://storage.googleapis.com/storage/v1/b/books/o?prefix=ngrams%2Fbooks%2Fgooglebooks-eng-us-all-5gram-20120701-&maxResults=1000",
+      "prefix": "ngrams/books/googlebooks-eng-us-all-5gram-20120701-"
+    },
+    {
+      "language": "eng-us",
+      "release": "20200217",
+      "files": 11145,
+      "compressed_bytes": 4877571635569,
+      "metadata_url": "https://storage.googleapis.com/storage/v1/b/books/o?prefix=ngrams%2Fbooks%2F20200217%2Feng-us%2F5-&maxResults=1000",
+      "prefix": "ngrams/books/20200217/eng-us/5-"
+    },
+    {
+      "language": "fre",
+      "release": "20120701",
+      "files": 678,
+      "compressed_bytes": 55345512134,
+      "metadata_url": "https://storage.googleapis.com/storage/v1/b/books/o?prefix=ngrams%2Fbooks%2Fgooglebooks-fre-all-5gram-20120701-&maxResults=1000",
+      "prefix": "ngrams/books/googlebooks-fre-all-5gram-20120701-"
+    },
+    {
+      "language": "fre",
+      "release": "20200217",
+      "files": 3071,
+      "compressed_bytes": 1821476892925,
+      "metadata_url": "https://storage.googleapis.com/storage/v1/b/books/o?prefix=ngrams%2Fbooks%2F20200217%2Ffre%2F5-&maxResults=1000",
+      "prefix": "ngrams/books/20200217/fre/5-"
+    },
+    {
+      "language": "ger",
+      "release": "20120701",
+      "files": 674,
+      "compressed_bytes": 16625187670,
+      "metadata_url": "https://storage.googleapis.com/storage/v1/b/books/o?prefix=ngrams%2Fbooks%2Fgooglebooks-ger-all-5gram-20120701-&maxResults=1000",
+      "prefix": "ngrams/books/googlebooks-ger-all-5gram-20120701-"
+    },
+    {
+      "language": "ger",
+      "release": "20200217",
+      "files": 2262,
+      "compressed_bytes": 1422917853320,
+      "metadata_url": "https://storage.googleapis.com/storage/v1/b/books/o?prefix=ngrams%2Fbooks%2F20200217%2Fger%2F5-&maxResults=1000",
+      "prefix": "ngrams/books/20200217/ger/5-"
+    },
+    {
+      "language": "heb",
+      "release": "20120701",
+      "files": 400,
+      "compressed_bytes": 70365122397,
+      "metadata_url": "https://storage.googleapis.com/storage/v1/b/books/o?prefix=ngrams%2Fbooks%2Fgooglebooks-heb-all-5gram-20120701-&maxResults=1000",
+      "prefix": "ngrams/books/googlebooks-heb-all-5gram-20120701-"
+    },
+    {
+      "language": "heb",
+      "release": "20200217",
+      "files": 42,
+      "compressed_bytes": 32048816394,
+      "metadata_url": "https://storage.googleapis.com/storage/v1/b/books/o?prefix=ngrams%2Fbooks%2F20200217%2Fheb%2F5-&maxResults=1000",
+      "prefix": "ngrams/books/20200217/heb/5-"
+    },
+    {
+      "language": "ita",
+      "release": "20120701",
+      "files": 636,
+      "compressed_bytes": 10271700236,
+      "metadata_url": "https://storage.googleapis.com/storage/v1/b/books/o?prefix=ngrams%2Fbooks%2Fgooglebooks-ita-all-5gram-20120701-&maxResults=1000",
+      "prefix": "ngrams/books/googlebooks-ita-all-5gram-20120701-"
+    },
+    {
+      "language": "ita",
+      "release": "20200217",
+      "files": 984,
+      "compressed_bytes": 699877639052,
+      "metadata_url": "https://storage.googleapis.com/storage/v1/b/books/o?prefix=ngrams%2Fbooks%2F20200217%2Fita%2F5-&maxResults=1000",
+      "prefix": "ngrams/books/20200217/ita/5-"
+    },
+    {
+      "language": "rus",
+      "release": "20120701",
+      "files": 633,
+      "compressed_bytes": 494282330738,
+      "metadata_url": "https://storage.googleapis.com/storage/v1/b/books/o?prefix=ngrams%2Fbooks%2Fgooglebooks-rus-all-5gram-20120701-&maxResults=1000",
+      "prefix": "ngrams/books/googlebooks-rus-all-5gram-20120701-"
+    },
+    {
+      "language": "rus",
+      "release": "20200217",
+      "files": 633,
+      "compressed_bytes": 356120711393,
+      "metadata_url": "https://storage.googleapis.com/storage/v1/b/books/o?prefix=ngrams%2Fbooks%2F20200217%2Frus%2F5-&maxResults=1000",
+      "prefix": "ngrams/books/20200217/rus/5-"
+    },
+    {
+      "language": "spa",
+      "release": "20120701",
+      "files": 643,
+      "compressed_bytes": 34727760468,
+      "metadata_url": "https://storage.googleapis.com/storage/v1/b/books/o?prefix=ngrams%2Fbooks%2Fgooglebooks-spa-all-5gram-20120701-&maxResults=1000",
+      "prefix": "ngrams/books/googlebooks-spa-all-5gram-20120701-"
+    },
+    {
+      "language": "spa",
+      "release": "20200217",
+      "files": 1415,
+      "compressed_bytes": 844823532394,
+      "metadata_url": "https://storage.googleapis.com/storage/v1/b/books/o?prefix=ngrams%2Fbooks%2F20200217%2Fspa%2F5-&maxResults=1000",
+      "prefix": "ngrams/books/20200217/spa/5-"
+    }
+  ],
+  "scope": "All compressed five-gram shards, excluding totalcounts and other n-gram lengths. Latest official downloadable release verified as 20200217; Viewer has newer data.",
+  "export_index": "https://storage.googleapis.com/books/ngrams/books/datasetsv3.html",
+  "latest_release_directory_check": "https://storage.googleapis.com/storage/v1/b/books/o?prefix=ngrams/books/2&delimiter=/&maxResults=1000&fields=prefixes,nextPageToken"
+}

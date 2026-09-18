@@ -14,5 +14,6 @@ printf '[%s] 1/1 Retrieve and filter; restart the same command to resume\n' "$(d
 "$FINANCE_VENV/bin/finance-pipeline" fetch \
   --config "${FINANCE_CONFIG:-configs/french_finance_cluster.json}" \
   --manifest "${FINANCE_MANIFEST:-manifests/fre-2012-5-all.json}" \
-  --run-dir "$FINANCE_RUN"
+  --run-dir "$FINANCE_RUN" \
+  --workers "${FINANCE_WORKERS:-${SLURM_CPUS_PER_TASK:-1}}"
 printf '[%s] Retrieval complete; step/overall elapsed %ss\n' "$(date -Is)" "$((SECONDS-started))"

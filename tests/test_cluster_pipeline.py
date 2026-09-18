@@ -10,7 +10,7 @@ import sqlite3
 import numpy as np
 import pytest
 
-from finance_sentiment.corpus import retrieve, import_shard, SCHEMA, EXTRA_SCHEMA
+from finance_sentiment.corpus import retrieve, import_shard, shard_paths, SCHEMA, EXTRA_SCHEMA
 from finance_sentiment.embeddings import embed, open_vectors
 from finance_sentiment.search import nearest, export_projector
 from finance_sentiment.tracking import run_lock
@@ -162,3 +162,92 @@ def test_single_writer_lock(tmp_path):
         with pytest.raises(RuntimeError, match="Another process"):
             with run_lock(tmp_path):
                 pass
+
+
+def read_counts(root):
+    with sqlite3.connect(root / "counts.sqlite") as conn:
+        return conn.execute("SELECT language,year,text,match_count FROM contexts ORDER BY language,year,text").fetchall()
+
+
+def test_parallel_matches_serial_and_resumes_existing_run(corpus, tmp_path):
+    root, config, manifest = corpus
+    retrieve(root, config, manifest)
+    parallel = tmp_path / "parallel"
+    parallel.mkdir()
+    retrieve(parallel, config, manifest, workers=2)
+    assert read_counts(parallel) == read_counts(root)
+    assert not list((parallel / ".matching-shards").iterdir())
+    retrieve(parallel, config, manifest, workers=3)
+    assert read_counts(parallel) == read_counts(root)
+    resumed = tmp_path / "resumed"
+    resumed.mkdir()
+    retrieve(resumed, config, manifest, limit=1)
+    retrieve(resumed, config, manifest, workers=2)
+    assert read_counts(resumed) == read_counts(root)
+
+
+def test_verified_filtered_checkpoint_survives_import_failure(corpus, monkeypatch):
+    root, config, manifest = corpus
+    import finance_sentiment.corpus as module
+    actual_import = module.import_shard
+    def fail(*args):
+        raise OSError("simulated disk failure")
+    monkeypatch.setattr(module, "import_shard", fail)
+    with pytest.raises(OSError, match="disk failure"):
+        retrieve(root, config, manifest, workers=2)
+    import multiprocessing
+    assert not multiprocessing.active_children()
+    ready = list((root / ".matching-shards").glob("*.ready.json"))
+    assert ready
+    # Remove the original of a fully verified shard: restart must reuse its filtered checkpoint.
+    for shard in manifest["shards"]:
+        _, receipt = shard_paths(root, shard)
+        if receipt.exists():
+            from urllib.parse import urlparse, unquote
+            Path(unquote(urlparse(shard["url"]).path)).unlink()
+    monkeypatch.setattr(module, "import_shard", actual_import)
+    retrieve(root, config, manifest, workers=2)
+    assert json.loads((root / "stats.json").read_text())["total_match_count"] == 27
+
+
+def test_parallel_bad_checksum_does_not_commit_bad_shard(corpus):
+    root, config, manifest = corpus
+    manifest["shards"][1]["md5"] = "bad"
+    with pytest.raises(ValueError, match="checksum"):
+        retrieve(root, config, manifest, retries=1, workers=2)
+    with sqlite3.connect(root / "counts.sqlite") as conn:
+        assert not conn.execute("SELECT 1 FROM sources WHERE name=?", (manifest["shards"][1]["name"],)).fetchone()
+    # The first shard can be committed or awaiting import, depending on completion order.
+    assert all(row[3] < 10 for row in read_counts(root))
+
+
+def test_multitarget_filter_matches_union(corpus):
+    root, config, manifest = corpus
+    config["target_substrings"] = ["FINANC", "navigation"]
+    retrieve(root, config, manifest, workers=2)
+    assert json.loads((root / "stats.json").read_text())["total_match_count"] == 126
+
+
+def crash_worker(*args):
+    import os
+    os._exit(9)
+
+
+def test_abrupt_worker_exit_fails_visibly_instead_of_hanging(corpus, monkeypatch):
+    root, config, manifest = corpus
+    monkeypatch.setattr("finance_sentiment.corpus.prepare_worker", crash_worker)
+    with pytest.raises(RuntimeError, match="Worker exited"):
+        retrieve(root, config, manifest, workers=2)
+    import multiprocessing
+    assert not multiprocessing.active_children()
+
+
+def test_interrupt_import_terminates_workers(corpus, monkeypatch):
+    root, config, manifest = corpus
+    def interrupt(*args):
+        raise KeyboardInterrupt
+    monkeypatch.setattr("finance_sentiment.corpus.import_shard", interrupt)
+    with pytest.raises(KeyboardInterrupt):
+        retrieve(root, config, manifest, workers=2)
+    import multiprocessing
+    assert not multiprocessing.active_children()
